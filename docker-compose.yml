@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:6.0
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+
+  backend:
+    build:
+      context: ./services/backend
+    environment:
+      - PORT=4000
+      - CORS_ORIGIN=http://localhost:3000
+      - MONGO_URL=mongodb://mongo:27017
+      - MONGO_DB=webchat
+      - MONGO_COLLECTION=messages
+    ports:
+      - '4000:4000'
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  chatserver:
+    build:
+      context: ./services/chatServer
+    environment:
+      - PORT=4001
+    depends_on:
+      - backend
+    ports:
+      - '4001:4001'
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./services/frontend
+      args:
+        VITE_API_URL: http://localhost:4000
+        VITE_WS_URL: ws://localhost:4001
+    depends_on:
+      - backend
+      - chatserver
+    ports:
+      - '3000:80'
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
