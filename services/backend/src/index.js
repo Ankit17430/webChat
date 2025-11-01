@@ -57,25 +57,25 @@ async function main() {
     const message = {
       id: generateId(),
       user: String(user).slice(0, 50),
-      text: String(text).slice(0, 500),
+      text: String(text).slice(0, 500), // Limit msg length, remove slice to get unlimited size or do catch error for too large messages
       timestamp: new Date().toISOString()
     };
 
     try {
-      await messagesCollection.insertOne({
+      await messagesCollection.insertOne({ // Insert with _id for faster lookups and to avoid duplicates in db
         _id: message.id,
         ...message
       });
 
-      await trimMessages(messagesCollection);
+      await trimMessages(messagesCollection); // Trim old messages if exceeding limit
 
-      res.status(201).json(message);
+      res.status(201).json(message); 
     } catch (error) {
       handleError(res, error, 'Failed to store message.');
     }
   });
 
-  app.delete('/api/messages', async (_req, res) => {
+  app.delete('/api/messages', async (_req, res) => { // Clear all messages
     try {
       await messagesCollection.deleteMany({});
       res.status(204).send();
@@ -84,18 +84,18 @@ async function main() {
     }
   });
 
-  app.use((_req, res) => {
+  app.use((_req, res) => { // 404 handler and catches requests to unknown endpoints. all calls run in order
     res.status(404).json({ error: 'Not Found' });
   });
 
-  const server = app.listen(PORT, () => {
+  const server = app.listen(PORT, () => { //Start server on specified port
     // eslint-disable-next-line no-console
     console.log(`[REST] Server listening on port ${PORT}`);
   });
 
   const shutdown = async () => {
-    await client.close();
-    server.close(() => process.exit(0));
+    await client.close(); // Close MongoDB connection
+    server.close(() => process.exit(0)); // Close server and exit process
   };
 
   process.on('SIGINT', shutdown);
@@ -104,7 +104,7 @@ async function main() {
   return server;
 }
 
-function mapMessage(doc) {
+function mapMessage(doc) { // Map MongoDB document to message object
   return {
     id: doc._id,
     user: doc.user,
@@ -121,16 +121,16 @@ async function trimMessages(collection) {
   }
 
   const excess = total - MAX_MESSAGES;
-  const oldest = await collection
+  const oldest = await collection // contains doc with only _id field
     .find({})
     .sort({ timestamp: 1 })
     .limit(excess)
     .project({ _id: 1 })
     .toArray();
 
-  const ids = oldest.map(doc => doc._id);
-  if (ids.length) {
-    await collection.deleteMany({ _id: { $in: ids } });
+  const ids = oldest.map(doc => doc._id); // converts doc to array of ids
+  if (ids.length) { // double check if there are ids to delete
+    await collection.deleteMany({ _id: { $in: ids } }); // $in operator checks if _id is in the list of ids to delete
   }
 }
 
@@ -141,7 +141,7 @@ function handleError(res, error, message) {
 }
 
 function generateId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`; // Generate unique id using timestamp and random string
 }
 
 main().catch(error => {

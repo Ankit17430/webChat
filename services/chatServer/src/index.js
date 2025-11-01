@@ -8,7 +8,7 @@ const server = new WebSocket.Server({
 });
 
 /** @type {Set<WebSocket>} */
-const clients = new Set();
+const clients = new Set(); // Set to track connected clients and ensure each client is stored only once
 
 server.on('connection', socket => {
   clients.add(socket);
@@ -24,7 +24,7 @@ server.on('connection', socket => {
     } catch (error) {
       return safeSend(socket, {
         type: 'error',
-        payload: { message: 'Messages must be valid JSON.' }
+        payload: { message: 'Messages must be valid JSON.' } // Notify client of JSON parsing error and probably need to change this
       });
     }
 

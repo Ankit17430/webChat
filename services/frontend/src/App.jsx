@@ -23,7 +23,7 @@ export default function App() {
     if (typeof window === 'undefined') {
       return generateName();
     }
-    const stored = window.localStorage.getItem('webchat-display-name');
+    const stored = window.localStorage.getItem('webchat-display-name'); // Window is browser defined object and localStorage is its property, it stores as key-value pair in browser
     return stored || generateName();
   });
   const [loading, setLoading] = useState(true);
@@ -35,7 +35,7 @@ export default function App() {
   useEffect(() => {
     let ignore = false;
 
-    async function loadMessages() {
+    async function loadMessages() { //to fetch existing messages from the backend API when the component mounts and only runs once
       setLoading(true);
       setError('');
 
@@ -69,7 +69,7 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
+  useEffect(() => { //to store the user's display name in local storage whenever it changes
     if (typeof window === 'undefined') {
       return undefined;
     }
@@ -78,7 +78,7 @@ export default function App() {
     return undefined;
   }, [displayName]);
 
-  useEffect(() => {
+  useEffect(() => { //to establish and manage the WebSocket connection for real-time updates
     let reconnectTimer;
     let isUnmounted = false;
 
@@ -97,7 +97,7 @@ export default function App() {
         try {
           const data = JSON.parse(event.data);
           if (data?.type === 'chat-message' && data.payload) {
-            setMessages(prev => appendMessage(prev, data.payload));
+            setMessages(prev => appendMessage(prev, data.payload)); //appendMessage function to add the new message to the existing list of messages
           }
         } catch (err) {
           // eslint-disable-next-line no-console
@@ -126,13 +126,13 @@ export default function App() {
     };
   }, []);
 
-  const sortedMessages = useMemo(
+  const sortedMessages = useMemo( //to sort messages by timestamp whenever the messages state changes, consistent display order
     () => [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
     [messages]
   );
 
   const handleSend = async value => {
-    const trimmed = value.trim();
+    const trimmed = value.trim(); // trim whitespace from both ends of the message
     if (!trimmed) {
       return;
     }
@@ -140,13 +140,13 @@ export default function App() {
     setIsSending(true);
     setError('');
 
-    const payload = {
+    const payload = { // prepare the payload to be sent to the backend API
       user: (displayName || 'Anonymous').trim().slice(0, 50),
       text: trimmed.slice(0, 500)
     };
 
     try {
-      const response = await fetch(`${API_URL}/api/messages`, {
+      const response = await fetch(`${API_URL}/api/messages`, { //send the message to the backend API
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -158,7 +158,7 @@ export default function App() {
 
       const saved = await response.json();
 
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
+      if (socketRef.current?.readyState === WebSocket.OPEN) { //send the new message to other connected clients via WebSocket
         socketRef.current.send(
           JSON.stringify({
             type: 'chat-message',
@@ -166,7 +166,7 @@ export default function App() {
           })
         );
       } else {
-        setMessages(prev => appendMessage(prev, saved));
+        setMessages(prev => appendMessage(prev, saved));// this updates the message state directly by the returned value from appendMessage function
       }
     } catch (err) {
       setError('Failed to send message. Check your connection and try again.');
@@ -181,8 +181,8 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div>
-          <h1>webChat</h1>
-          <p className="subtitle">React + REST + WebSocket demo</p>
+          <h1>Web Chat</h1>
+          <p className="subtitle">Test of All Chats</p>
         </div>
         <div className="status">
           <span className={CONNECTION_CLASS[connectionState]}>{CONNECTION_LABEL[connectionState]}</span>
