@@ -17,16 +17,16 @@ export default function ChatMessageList({ messages, currentUser }) {
   return (
     <div className="message-list" ref={containerRef}>
       {messages.map(message => {
-        const isOwn = message.user === currentUser;
+        const isOwn = message.userId === currentUser;
         return (
           <article key={message.id} className={isOwn ? 'message message--own' : 'message'}>
             <header className="message-meta">
-              <span className="message-author">{message.user}</span>
+              <span className="message-author">{message.userId}</span>
               <time className="message-time" dateTime={message.timestamp}>
                 {formatTime(message.timestamp)}
               </time>
             </header>
-            <p className="message-text">{message.text}</p>
+            <p className="message-text">{message.message}</p>
           </article>
         );
       })}
