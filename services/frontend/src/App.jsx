@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ChatMessageList from './components/ChatMessageList.jsx';
 import ChatInput from './components/ChatInput.jsx';
 import ChatSidebar from './components/ChatSidebar.jsx';
+import UserSettings from './components/UserSettings.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:4001';
@@ -21,13 +22,14 @@ const CONNECTION_CLASS = {
 };
 
 export default function App() {
-  const [authToken, setAuthToken] = useState(() => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [authToken, setAuthToken] = useState(() => { // For page reloads, retain auth token if present on clint local storage
     if (typeof window === 'undefined') {
       return '';
     }
     return window.localStorage.getItem(STORAGE_TOKEN_KEY) || '';
   });
-  const [currentUser, setCurrentUser] = useState(() => {
+  const [currentUser, setCurrentUser] = useState(() => { //localy store current user details
     if (typeof window === 'undefined') {
       return null;
     }
@@ -53,7 +55,6 @@ export default function App() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [chatsLoading, setChatsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [connectionState, setConnectionState] = useState('disconnected');
   const [messageError, setMessageError] = useState('');
   const [chatError, setChatError] = useState('');
@@ -61,9 +62,9 @@ export default function App() {
   const [profileMessage, setProfileMessage] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [emailDraft, setEmailDraft] = useState(() => currentUser?.email || '');
-  const socketRef = useRef(null);
-  const mountedRef = useRef(true);
-  const activeChatRef = useRef('');
+  const socketRef = useRef(null); // WebSocket instance
+  const mountedRef = useRef(true); // To track if component is mounted
+  const activeChatRef = useRef(''); // To keep track of currently active chat for incoming messages
 
   const resetAuthState = useCallback(() => {
     setAuthToken('');
@@ -72,32 +73,33 @@ export default function App() {
     setChats([]);
     setSelectedChatId('');
     setConnectionState('disconnected');
+    setIsSettingsOpen(false);
     socketRef.current?.close();
     socketRef.current = null;
   }, []);
 
-  useEffect(() => {
+  useEffect(() => { // Clean up code on unmount ???
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  useEffect(() => {
+  useEffect(() => { // Keep track of active chat for incoming messages
     activeChatRef.current = selectedChatId;
   }, [selectedChatId]);
 
-  useEffect(() => {
+  useEffect(() => { // Stores auth token in local storage
     if (typeof window === 'undefined') {
       return;
     }
     if (authToken) {
-      window.localStorage.setItem(STORAGE_TOKEN_KEY, authToken);
+      window.localStorage.setItem(STORAGE_TOKEN_KEY, authToken); // Key value pair
     } else {
       window.localStorage.removeItem(STORAGE_TOKEN_KEY);
     }
   }, [authToken]);
 
-  useEffect(() => {
+  useEffect(() => { // Stores current user in local storage
     if (typeof window === 'undefined') {
       return;
     }
@@ -113,7 +115,7 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    let ignore = false;
+    let ignore = false; // to prevent setting state on unmounted component
 
     async function fetchSettings() {
       try {
@@ -137,7 +139,7 @@ export default function App() {
     };
   }, []);
 
-  const loadChats = useCallback(async () => {
+  const loadChats = useCallback(async () => { // Load list of chats and useCallback to memoize the function so no need to calculate the chat list again
     if (!mountedRef.current || !authToken) {
       return;
     }
@@ -145,9 +147,9 @@ export default function App() {
     setChatError('');
     try {
       const response = await fetch(`${API_URL}/api/chats`, {
-        headers: { Authorization: `Bearer ${authToken}` }
+        headers: { Authorization: `Bearer ${authToken}` } // This is to verify the user is authenticated
       });
-      if (response.status === 401) {
+      if (response.status === 401) { // Check for unauthorized status
         resetAuthState();
         return;
       }
@@ -160,14 +162,14 @@ export default function App() {
       }
       const list = Array.isArray(payload?.chats) ? payload.chats : [];
       setChats(list);
-      setSelectedChatId(prev => {
+      setSelectedChatId(prev => { // Retain selected chat if still present after reload
         if (prev && list.some(chat => chat.id === prev)) {
           return prev;
         }
         return list[0]?.id || '';
       });
     } catch (err) {
-      if (mountedRef.current) {
+      if (mountedRef.current) {// only set state if still mounted
         setChatError('Unable to load chats. Refresh in a moment.');
       }
       // eslint-disable-next-line no-console
@@ -179,7 +181,7 @@ export default function App() {
     }
   }, [authToken, resetAuthState]);
 
-  useEffect(() => {
+  useEffect(() => { // To reset chats on logout and load chats on login
     if (!authToken) {
       setChats([]);
       setSelectedChatId('');
@@ -188,8 +190,8 @@ export default function App() {
     loadChats();
   }, [authToken, loadChats]);
 
-  useEffect(() => {
-    if (!authToken || !selectedChatId) {
+  useEffect(() => { // Load messages when selected chat changes
+    if (!authToken || !selectedChatId) { // If no auth token or no chat selected, clear messages
       setMessages([]);
       setMessagesLoading(false);
       return;
@@ -202,22 +204,22 @@ export default function App() {
     async function loadMessages() {
       try {
         const response = await fetch(`${API_URL}/api/chats/${selectedChatId}/messages`, {
-          headers: { Authorization: `Bearer ${authToken}` }
+          headers: { Authorization: `Bearer ${authToken}` } 
         });
         if (response.status === 401) {
           resetAuthState();
           return;
         }
         if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
+          throw new Error(`Request failed with status ${response.status}`); // Handle non-ok responses
         }
         const payload = await response.json();
         if (!ignore) {
-          setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+          setMessages(Array.isArray(payload?.messages) ? payload.messages : []); // Set messages if component still mounted
         }
       } catch (err) {
         if (!ignore) {
-          setMessageError('Unable to load messages for this chat.');
+          setMessageError('Unable to load messages for this chat.'); 
         }
         // eslint-disable-next-line no-console
         console.error(err);
@@ -233,9 +235,9 @@ export default function App() {
     return () => {
       ignore = true;
     };
-  }, [authToken, selectedChatId, resetAuthState]);
+  }, [authToken, selectedChatId, resetAuthState]); 
 
-  useEffect(() => {
+  useEffect(() => { // WebSocket connection management
     if (!authToken) {
       setConnectionState('disconnected');
       socketRef.current?.close();
@@ -246,26 +248,26 @@ export default function App() {
     let reconnectTimer;
     let isUnmounted = false;
 
-    const connect = () => {
+    const connect = () => { // Function to establish WebSocket connection
       setConnectionState('connecting');
-      const socket = new WebSocket(WS_URL);
+      const socket = new WebSocket(WS_URL); // Create new WebSocket instance
       socketRef.current = socket;
 
-      socket.addEventListener('open', () => {
+      socket.addEventListener('open', () => { // On successful connection
         if (!isUnmounted) {
           setConnectionState('connected');
         }
       });
 
-      socket.addEventListener('message', event => {
+      socket.addEventListener('message', event => { // On receiving a message
         try {
           const data = JSON.parse(event.data);
-          if (data?.type === 'chat-message' && data.payload?.chatId) {
+          if (data?.type === 'chat-message' && data.payload?.chatId) { // Ensure payload has chatId
             const payload = data.payload;
             if (activeChatRef.current === payload.chatId) {
-              setMessages(prev => appendMessage(prev, payload));
+              setMessages(prev => appendMessage(prev, payload)); // Append message if it belongs to active chat
+              setChats(prev => touchChat(prev, payload));// Update chat's when the last message was received 
             }
-            setChats(prev => touchChat(prev, payload));
           }
         } catch (err) {
           // eslint-disable-next-line no-console
@@ -273,14 +275,14 @@ export default function App() {
         }
       });
 
-      socket.addEventListener('close', () => {
+      socket.addEventListener('close', () => { // On connection close
         if (!isUnmounted) {
           setConnectionState('disconnected');
           reconnectTimer = setTimeout(connect, 3000);
         }
       });
 
-      socket.addEventListener('error', () => {
+      socket.addEventListener('error', () => { // On connection error
         socket.close();
       });
     };
@@ -294,7 +296,7 @@ export default function App() {
     };
   }, [authToken]);
 
-  useEffect(() => {
+  useEffect(() => { // Load user profile on authToken change
     if (!authToken) {
       setAccountLoading(false);
       return;
@@ -317,7 +319,7 @@ export default function App() {
         }
         const payload = await response.json();
         if (!ignore) {
-          setCurrentUser(payload?.user || null);
+          setCurrentUser(payload?.user || null); // Set current user if component still mounted
         }
       } catch (err) {
         if (!ignore) {
@@ -339,20 +341,18 @@ export default function App() {
     };
   }, [authToken, resetAuthState]);
 
-  const sortedMessages = useMemo(
+  const sortedMessages = useMemo( // Sort messages by timestamp
     () => [...messages].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()),
     [messages]
   );
 
-  const activeChat = useMemo(
+  const activeChat = useMemo(// Get currently active chat details
     () => chats.find(chat => chat.id === selectedChatId) || null,
     [chats, selectedChatId]
   );
 
-  const isAuthenticated = Boolean(authToken && currentUser);
-
-  const handleAuthSubmit = async event => {
-    event.preventDefault();
+  const handleAuthSubmit = async event => { // Handle login/register form submission
+    event.preventDefault(); // Prevent default form submission so reload of page doesn't happen
     setAuthError('');
     const username = authForm.username.trim();
     const password = authForm.password;
@@ -370,7 +370,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload = await response.json().catch(() => ({})); // Safely parse JSON response as.json() is async
       if (!response.ok) {
         throw new Error(payload?.error || 'Authentication failed.');
       }
@@ -385,22 +385,21 @@ export default function App() {
     }
   };
 
-  const handleAuthInputChange = event => {
-    const { name, value } = event.target;
+  const handleAuthInputChange = event => { // Handle changes in auth form inputs
+    const { name, value } = event.target; // This updates when the user is no longer focused on the field
     setAuthForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(() => { // Handle user logout
     resetAuthState();
     setAuthForm({ username: '', password: '' });
   }, [resetAuthState]);
 
-  const handleCreateChat = useCallback(
+  const handleCreateChat = useCallback( // Handle creation of new chat
     async ({ title, participants }) => {
       if (!authToken) {
         throw new Error('Login required.');
       }
-      setIsCreatingChat(true);
       try {
         const response = await fetch(`${API_URL}/api/chats`, {
           method: 'POST',
@@ -427,8 +426,6 @@ export default function App() {
         // eslint-disable-next-line no-console
         console.error('Failed to create chat', err);
         throw err instanceof Error ? err : new Error('Failed to create chat.');
-      } finally {
-        setIsCreatingChat(false);
       }
     },
     [authToken, loadChats, resetAuthState]
@@ -476,7 +473,7 @@ export default function App() {
       }
 
       if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(
+        socketRef.current.send( // Send message via WebSocket send
           JSON.stringify({
             type: 'chat-message',
             payload: saved
@@ -531,7 +528,7 @@ export default function App() {
     }
   };
 
-  if (!isAuthenticated) {
+  if (!authToken) {
     return (
       <div className="auth-shell">
         <div className="auth-card">
@@ -581,51 +578,28 @@ export default function App() {
       <header className="app-header">
         <div>
           <h1>Web Chat</h1>
-          <p className="subtitle">Secure multi-user rooms</p>
+          <p className="subtitle">Chat to Chat Server</p>
         </div>
         <div className="status">
           <span className={CONNECTION_CLASS[connectionState]}>{CONNECTION_LABEL[connectionState]}</span>
+          <button
+            type="button"
+            className={isSettingsOpen ? 'settings-button settings-button--active' : 'settings-button'}
+            onClick={() => setIsSettingsOpen(prev => !prev)}
+            aria-pressed={isSettingsOpen}
+            aria-label="Toggle user settings"
+          >
+            ⚙️
+          </button>
         </div>
       </header>
 
-      <section className="profile-panel">
-        <div className="profile-header">
-          <div>
-            <h2>User settings</h2>
-            <p className="profile-username">Signed in as {currentUser.username}</p>
-          </div>
-          <button className="logout-button" type="button" onClick={handleLogout}>
-            Sign out
-          </button>
-        </div>
-        <form className="profile-form" onSubmit={handleSaveEmail}>
-          <label className="profile-label">
-            Email (optional)
-            <input
-              className="profile-input"
-              type="email"
-              value={emailDraft}
-              onChange={event => setEmailDraft(event.target.value)}
-              placeholder="name@example.com"
-            />
-          </label>
-          <div className="profile-actions">
-            <button className="compose-button" type="submit" disabled={isSavingProfile}>
-              {isSavingProfile ? 'Saving…' : 'Save email'}
-            </button>
-            {profileMessage ? <span className="profile-hint">{profileMessage}</span> : null}
-            {profileError ? <span className="profile-hint profile-hint--error">{profileError}</span> : null}
-          </div>
-        </form>
-      </section>
-
-      <main className="chat-layout">
+      <main className={isSettingsOpen ? 'chat-layout chat-layout--settings' : 'chat-layout'}>
         <ChatSidebar
           chats={chats}
           selectedChatId={selectedChatId}
           onSelectChat={setSelectedChatId}
           onCreateChat={handleCreateChat}
-          isCreatingChat={isCreatingChat}
           isLoadingChats={chatsLoading}
           maxParticipants={settings?.maxParticipantsPerChat}
           error={chatError}
@@ -663,6 +637,22 @@ export default function App() {
             <ChatInput disabled={isSending || !selectedChatId} onSend={handleSend} />
           </div>
         </section>
+
+        {isSettingsOpen ? (
+          <aside className="settings-pane settings-pane--open">
+            <UserSettings
+              username={currentUser.username}
+              emailDraft={emailDraft}
+              onEmailChange={setEmailDraft}
+              onSaveEmail={handleSaveEmail}
+              isSaving={isSavingProfile}
+              profileMessage={profileMessage}
+              profileError={profileError}
+              onLogout={handleLogout}
+              onClose={() => setIsSettingsOpen(false)}
+            />
+          </aside>
+        ) : null}
       </main>
     </div>
   );
@@ -677,17 +667,17 @@ function appendMessage(existing, message) {
 }
 
 function touchChat(list, message) {
-  if (!message?.chatId) {
+  if (!message?.chatId) { // check if chatId is present
     return list;
   }
-  const index = list.findIndex(chat => chat.id === message.chatId);
+  const index = list.findIndex(chat => chat.id === message.chatId); // find chat by chatId
   if (index === -1) {
     return list;
   }
   const next = [...list];
   next[index] = {
     ...next[index],
-    lastMessageAt: message.timestamp
+    lastMessageAt: message.timestamp //update to when the last message was sent in the chat
   };
   return next;
 }

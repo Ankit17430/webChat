@@ -21,7 +21,7 @@ body {
 }
 
 #root {
-  width: min(960px, 100%);
+  width: min(1200px, 100%);
 }
 
 .auth-shell {
@@ -87,6 +87,12 @@ body {
   display: grid;
   grid-template-columns: minmax(220px, 280px) 1fr;
   gap: 16px;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.chat-layout--settings {
+  grid-template-columns: minmax(220px, 280px) 1fr minmax(0, 320px);
 }
 
 .chat-sidebar-shell {
@@ -244,6 +250,24 @@ body {
   gap: 8px;
 }
 
+.settings-button {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.settings-button--active {
+  background: rgba(45, 109, 255, 0.4);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -292,6 +316,12 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.profile-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .profile-username {
@@ -354,8 +384,28 @@ body {
   color: #ff6f6f;
 }
 
+.settings-pane {
+  width: min(320px, 100%);
+}
+
+.settings-pane .profile-panel {
+  height: 100%;
+}
+
+.settings-close {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
 .chat-panel {
-  min-height: 320px;
+  min-height: 400px;
   background: rgba(6, 12, 24, 0.9);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);

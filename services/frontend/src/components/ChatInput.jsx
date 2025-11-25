@@ -12,14 +12,22 @@ export default function ChatInput({ disabled, onSend }) { //Prop "disabled" to d
     setValue('');
   };
 
+  const handleKeyDown = event => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSubmit(event);
+    }
+  };
+
   return (
     <form className="compose-form" onSubmit={handleSubmit}>  {/* form to handle message submission */}
       <textarea
         className="compose-textarea"
         placeholder="Type a message…"
         value={value}
-        rows={2}
+        rows={1}
         onChange={event => setValue(event.target.value)}
+        onKeyDown={handleKeyDown}
         disabled={disabled}
       />
       <button className="compose-button" type="submit" disabled={disabled}>

@@ -228,9 +228,9 @@ async function main() {
     }
 
     const type = participants.length === 2 ? 'direct' : 'group';
-    const shouldDeriveId = type === 'direct' && cachedSettings.deterministicDirectChatIds;
-    const chatId = shouldDeriveId ? deriveChatId(participants) : generateId();
-    const titleFromParticipants = participants.join(type === 'direct' ? ' ↔ ' : ', ');
+    const shouldDeriveId = type === 'direct' && cachedSettings.deterministicDirectChatIds; // checks if it is 2 person group and deterministic ids are enabled
+    const chatId = shouldDeriveId ? deriveChatId(participants) : generateId(); // Generate id if it is not two person deterministic chat
+    const titleFromParticipants = participants.join(type === 'direct' ? ' ↔ ' : ', '); // Fallback title change to if statement
     const title = String(req.body?.title || '').trim() || titleFromParticipants;
 
     try {
