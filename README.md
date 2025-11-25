@@ -89,7 +89,10 @@ Message schema (REST/WebSocket payloads): `id`, `chatId`, `userId`, `message`, `
 
 ## System diagrams
 
-- `![User registration](img/User_Registration.png)`
-- `![User login](img/User_Login.png)`
-- `![Create chat](img/Create_Chat.png)`
-- `![Send message](img/Send_Messages.png)`
+![User registration](img/User_Registration.png)
+
+![User login](img/User_Login.png)
+
+![Create chat](img/Create_Chat.png)
+
+![Send message](img/Send_Messages.png)
