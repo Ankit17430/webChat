@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const { MongoClient } = require('mongodb');
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4001;
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo:27017';
@@ -6,15 +7,40 @@ const MONGO_DB = process.env.MONGO_DB || 'webchat';
 const MONGO_MESSAGES_COLLECTION = process.env.MONGO_MESSAGES_COLLECTION || 'messages';
 const MONGO_CHATS_COLLECTION = process.env.MONGO_CHATS_COLLECTION || 'chats';
 
-const server = new WebSocket.Server({
-  port: PORT,
-  host: '0.0.0.0'
-});
 
 /** @type {Set<WebSocket>} */
 const clients = new Set(); // Set to track connected clients and ensure each client is stored only once
 
-server.on('connection', socket => {
+let messagesCollection;
+let chatsCollection;
+let mongoClient;
+
+async function connectToMongo() {
+  mongoClient = new MongoClient(MONGO_URL, { ignoreUndefined: true });
+  await client.connect();
+
+  const db = client.db(MONGO_DB);
+  messagesCollection = db.collection(MONGO_MESSAGES_COLLECTION);
+  chatsCollection = db.collection(MONGO_CHATS_COLLECTION);
+
+  await messagesCollection.createIndex({ chatId: 1, timestamp: 1 });
+
+  const server = new WebSocket.Server({port: PORT, host: '0.0.0.0'});
+  server.on('connection', handleConnection);
+  server.on('listening', () => console.log(`listening on ${PORT}`));
+
+  const shutdown = async () => { await mongoClient.close(); server.close(); };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+connectToMongo().catch(error => {
+  // eslint-disable-next-line no-console
+  console.error('Failed to connect to MongoDB:', error);
+  process.exit(1);
+});
+
+function handleConnection(socket) {
   clients.add(socket);
   safeSend(socket, {
     type: 'system-message',
@@ -52,12 +78,7 @@ server.on('connection', socket => {
   socket.on('error', () => {
     clients.delete(socket);
   });
-});
-
-server.on('listening', () => {
-  // eslint-disable-next-line no-console
-  console.log(`[WebSocket] Server listening on port ${PORT}`);
-});
+};
 
 function broadcast(message) {
   for (const client of clients) {
