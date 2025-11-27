@@ -1,6 +1,10 @@
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4001;
+const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo:27017';
+const MONGO_DB = process.env.MONGO_DB || 'webchat';
+const MONGO_MESSAGES_COLLECTION = process.env.MONGO_MESSAGES_COLLECTION || 'messages';
+const MONGO_CHATS_COLLECTION = process.env.MONGO_CHATS_COLLECTION || 'chats';
 
 const server = new WebSocket.Server({
   port: PORT,
