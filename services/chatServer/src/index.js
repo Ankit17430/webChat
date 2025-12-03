@@ -1,12 +1,13 @@
 const WebSocket = require('ws');
 const { MongoClient } = require('mongodb');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4001;
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://mongo:27017';
 const MONGO_DB = process.env.MONGO_DB || 'webchat';
 const MONGO_MESSAGES_COLLECTION = process.env.MONGO_MESSAGES_COLLECTION || 'messages';
 const MONGO_CHATS_COLLECTION = process.env.MONGO_CHATS_COLLECTION || 'chats';
-
+const MAX_MESSAGES = process.env.MAX_MESSAGES ? Number(process.env.MAX_MESSAGES) : 1000;
 
 /** @type {Set<WebSocket>} */
 const clients = new Set(); // Set to track connected clients and ensure each client is stored only once
@@ -17,9 +18,9 @@ let mongoClient;
 
 async function connectToMongo() {
   mongoClient = new MongoClient(MONGO_URL, { ignoreUndefined: true });
-  await client.connect();
+  await mongoClient.connect();
 
-  const db = client.db(MONGO_DB);
+  const db = mongoClient.db(MONGO_DB);
   messagesCollection = db.collection(MONGO_MESSAGES_COLLECTION);
   chatsCollection = db.collection(MONGO_CHATS_COLLECTION);
 
@@ -47,7 +48,7 @@ function handleConnection(socket) {
     payload: { message: 'Connected to the chat gateway.' }
   });
 
-  socket.on('message', raw => {
+  socket.on('message', async raw => {
     let parsed;
     try {
       parsed = JSON.parse(raw.toString());
@@ -65,10 +66,12 @@ function handleConnection(socket) {
       });
     }
 
-    broadcast(JSON.stringify({
-      type: 'chat-message',
-      payload: parsed.payload
-    }));
+    try {
+      const stored = await persistMessage(parsed.payload);
+      broadcast(JSON.stringify({ type: 'chat-message', payload: stored }));
+    } catch (error) {
+      safeSend(socket, { type: 'error', payload: { message: error.message || 'Failed to store message.' } });
+    }
   });
 
   socket.on('close', () => {
@@ -79,6 +82,57 @@ function handleConnection(socket) {
     clients.delete(socket);
   });
 };
+
+async function persistMessage(payload) {
+  // --
+  const { chatId, userId, message } = payload || {};
+  if (!chatId || !userId || !message) {
+    throw new Error('chatId, userId, and message are required.');
+  }
+
+  await ensureMembership(String(chatId), String(userId));
+
+  const doc = {
+    id: crypto.randomUUID(),
+    chatId: String(chatId),
+    userId: String(userId),
+    message: String(message).slice(0, 500),
+    timestamp: new Date().toISOString()
+  };
+
+  await messagesCollection.insertOne({ _id: doc.id, ...doc });
+  await trimMessages(doc.chatId);
+  return doc;
+  // --
+}
+
+async function trimMessages(chatId) {
+  // --
+  const total = await messagesCollection.countDocuments({ chatId });
+  if (total <= MAX_MESSAGES) return;
+
+  const excess = total - MAX_MESSAGES;
+  const oldest = await messagesCollection
+    .find({ chatId })
+    .sort({ timestamp: 1 })
+    .limit(excess)
+    .project({ _id: 1 })
+    .toArray();
+
+  const ids = oldest.map(d => d._id);
+  if (ids.length) {
+    await messagesCollection.deleteMany({ _id: { $in: ids } });
+  }
+}
+
+async function ensureMembership(chatId, userId) {
+  // --
+  const chat = await chatsCollection.findOne({ _id: chatId, participants: userId });
+  if (!chat) {
+    throw new Error('Chat not found or access denied.');
+  }
+  // --
+}
 
 function broadcast(message) {
   for (const client of clients) {
