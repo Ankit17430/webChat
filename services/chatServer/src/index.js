@@ -8,6 +8,7 @@ const MONGO_DB = process.env.MONGO_DB || 'webchat';
 const MONGO_MESSAGES_COLLECTION = process.env.MONGO_MESSAGES_COLLECTION || 'messages';
 const MONGO_CHATS_COLLECTION = process.env.MONGO_CHATS_COLLECTION || 'chats';
 const MAX_MESSAGES = process.env.MAX_MESSAGES ? Number(process.env.MAX_MESSAGES) : 1000;
+const salt = crypto.randomBytes(16);
 
 /** @type {Set<WebSocket>} */
 const clients = new Set(); // Set to track connected clients and ensure each client is stored only once
@@ -93,7 +94,7 @@ async function persistMessage(payload) {
   await ensureMembership(String(chatId), String(userId));
 
   const doc = {
-    id: crypto.randomUUID(),
+    id: msgId(String(userId), String(userId), String(message), new Date().toISOString()),
     chatId: String(chatId),
     userId: String(userId),
     message: String(message).slice(0, 500),
@@ -146,4 +147,9 @@ function safeSend(socket, message) {
   if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify(message));
   }
+}
+
+function msgId(userId, chatId, message, timestamp) {
+  data = userId + chatId + message + timestamp;
+  return crypto.pbkdf2Sync(data, 'salt', 1000, 8, 'sha512').toString('hex');
 }
