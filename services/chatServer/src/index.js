@@ -36,11 +36,15 @@ async function connectToMongo() {
   process.on('SIGTERM', shutdown);
 }
 
-connectToMongo().catch(error => {
-  // eslint-disable-next-line no-console
-  console.error('Failed to connect to MongoDB:', error);
-  process.exit(1);
-});
+module.exports = { connectToMongo };
+
+if (require.main === module){
+  connectToMongo().catch(error => {
+    // eslint-disable-next-line no-console
+    console.error('Failed to connect to MongoDB:', error);
+    process.exit(1);
+  });
+}
 
 function handleConnection(socket) {
   clients.add(socket);
