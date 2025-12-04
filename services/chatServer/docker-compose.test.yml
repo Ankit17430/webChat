@@ -1,0 +1,32 @@
+services:
+  mongo-test:
+    image: mongo:6.0
+    environment:
+      MONGO_INITDB_DATABASE: testdb
+
+  chatserver:
+    build:
+      context: ./
+      dockerfile: test/Dockerfile.test
+    environment:
+      - PORT=5001
+      - MONGO_URL=mongodb://mongo-test:27017
+      - MONGO_DB=testdb
+      - MONGO_CHATS_COLLECTION=chats
+      - MONGO_MESSAGES_COLLECTION=messages
+      - MAX_MESSAGES=100
+
+
+  tests:
+    build:
+      context: ./
+      dockerfile: test/Dockerfile.test
+    environment:
+      - PORT=5001
+      - MONGO_URL=mongodb://mongo-test:27017
+      - MONGO_DB=testdb
+      - MONGO_CHATS_COLLECTION=chats
+      - MONGO_MESSAGES_COLLECTION=messages
+    depends_on:
+      - mongo-test
+      - chatserver

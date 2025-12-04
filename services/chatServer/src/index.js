@@ -48,7 +48,7 @@ if (require.main === module){
 
 function handleConnection(socket) {
   clients.add(socket);
-  safeSend(socket, {
+  safeSend(socket, { // Send system message on connect
     type: 'system-message',
     payload: { message: 'Connected to the chat gateway.' }
   });
@@ -155,5 +155,5 @@ function safeSend(socket, message) {
 
 function msgId(userId, chatId, message, timestamp) {
   data = userId + chatId + message + timestamp;
-  return crypto.pbkdf2Sync(data, 'salt', 1000, 8, 'sha512').toString('hex');
+  return crypto.pbkdf2Sync(data, salt, 1000, 8, 'sha512').toString('hex');
 }

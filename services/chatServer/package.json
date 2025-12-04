@@ -4,7 +4,9 @@
   "description": "WebSocket gateway for the webChat demo application",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "keywords": [
     "chat",
@@ -15,5 +17,8 @@
   "dependencies": {
     "ws": "^8.14.2",
     "mongodb": "^6.3.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
